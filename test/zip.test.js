@@ -51,12 +51,12 @@ describe('crc32', () => {
 describe('zip', () => {
   it('writes an archive unzip accepts, with every file as it was', () => {
     const bytes = zip([
-      { name: 'a.csv', data: '﻿query,citations\r\nblue widgets,3\r\n' },
+      { name: 'a.csv', data: '\uFEFFquery,citations\r\nblue widgets,3\r\n' },
       { name: 'año/b.txt', data: new Uint8Array([0, 1, 2, 255]) },
     ], new Date(2026, 4, 17, 15, 30, 10));
     const path = write(bytes);
     expect(execFileSync('unzip', ['-t', path], { encoding: 'utf8' })).toContain('No errors detected');
-    expect(execFileSync('unzip', ['-p', path, 'a.csv'], { encoding: 'utf8' })).toBe('﻿query,citations\r\nblue widgets,3\r\n');
+    expect(execFileSync('unzip', ['-p', path, 'a.csv'], { encoding: 'utf8' })).toBe('\uFEFFquery,citations\r\nblue widgets,3\r\n');
     const entries = readEntries(bytes);
     expect(entries.map(e => e.name)).toEqual(['a.csv', 'año/b.txt']);
     for (const e of entries) {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { separators, toCsv } from '../src/csv.js';
 
-const BOM = '﻿';
+const BOM = '\uFEFF';
 
 const TABLE = {
   file: 'mapping',

@@ -11,7 +11,7 @@ const DOC_RELS = 'http://schemas.openxmlformats.org/officeDocument/2006/relation
 // The five special characters are escaped.
 export const xmlText = value =>
   String(value)
-    .replace(/[^\t\n\r\x20-퟿-�\u{10000}-\u{10FFFF}]/gu, '')
+    .replace(/[^\t\n\r\x20-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu, '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

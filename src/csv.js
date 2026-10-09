@@ -21,5 +21,5 @@ export function toCsv({ header, rows }, lang) {
     const text = typeof value === 'number' ? String(value).replace('.', decimal) : safeText(String(value ?? ''));
     return text.includes(column) || /["\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
-  return `﻿${[header, ...rows].map(row => row.map(cell).join(column)).join('\r\n')}\r\n`;
+  return `\uFEFF${[header, ...rows].map(row => row.map(cell).join(column)).join('\r\n')}\r\n`;
 }

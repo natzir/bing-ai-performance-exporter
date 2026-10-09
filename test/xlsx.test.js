@@ -36,7 +36,7 @@ const wellFormed = xml => new DOMParser().parseFromString(xml, 'application/xml'
 describe('xmlText', () => {
   it('escapes XML\'s special characters and drops the ones it cannot carry', () => {
     expect(xmlText('a & b < c > "d"')).toBe('a &amp; b &lt; c &gt; &quot;d&quot;');
-    expect(xmlText('bad\u0001char￿')).toBe('badchar');
+    expect(xmlText('bad\u0001char\uFFFF')).toBe('badchar');
     expect(xmlText('tab\tok')).toBe('tab\tok');
   });
 });
