@@ -36,14 +36,19 @@ export async function getToken(fetchFn) {
 
 export function classify(status, text, retryAfter) {
   const asked = (Number.parseInt(retryAfter ?? '', 10) || 0) * 1000;
-  if (status === 429 || THROTTLE_TEXT.test(text)) return { kind: 'throttled', wait: Math.max(asked, WAIT.throttled) };
   if (status >= 200 && status < 300) {
+    let data;
     try {
-      return { kind: 'data', data: JSON.parse(text) };
+      data = JSON.parse(text);
     } catch {
       return { kind: 'throttled', wait: WAIT.throttled };
     }
+    // A list answer is data even if a query or page in it mentions the throttle text.
+    if (data && typeof data === 'object' && 'TotalNumOfRecords' in data) return { kind: 'data', data };
+    if (THROTTLE_TEXT.test(text)) return { kind: 'throttled', wait: WAIT.throttled };
+    return { kind: 'data', data };
   }
+  if (status === 429 || THROTTLE_TEXT.test(text)) return { kind: 'throttled', wait: Math.max(asked, WAIT.throttled) };
   if (status === 404 && text.includes('NoDataFound')) return { kind: 'none' };
   if (status >= 500) return { kind: 'throttled', wait: WAIT.server };
   if (status === 401 || status === 403) return { kind: 'expired' };

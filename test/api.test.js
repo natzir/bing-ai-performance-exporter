@@ -37,6 +37,13 @@ describe('classify', () => {
     expect(classify(400, 'Bad request', null)).toEqual({ kind: 'error', status: 400 });
     expect(classify(404, 'Not found', null)).toEqual({ kind: 'error', status: 404 });
   });
+
+  it('reads a list whose data mentions too many requests as data, not as throttling', () => {
+    expect(classify(200, JSON.stringify({ Queries: [{ GroundingQuery: '429 too many requests' }], TotalNumOfRecords: 1 }), null))
+      .toEqual({ kind: 'data', data: { Queries: [{ GroundingQuery: '429 too many requests' }], TotalNumOfRecords: 1 } });
+    expect(classify(200, JSON.stringify({ Pages: [{ PageUrl: "https://example.com/?q=We're sorry", Citations: 1 }], TotalNumOfRecords: 1 }), null).kind)
+      .toBe('data');
+  });
 });
 
 describe('payload', () => {
