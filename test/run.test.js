@@ -19,7 +19,7 @@ const many = n =>
   Array.from({ length: n }, (_, i) => ({ GroundingQuery: `query ${i}`, Citations: 1, Intent: [], TopicClusters: [], CitationRate: 0.5 }));
 
 describe('a run', () => {
-  it('maps every query to the pages it cited, then forgets the saved progress', async () => {
+  it('maps every query to the pages it cited, and keeps the saved progress until it is discarded', async () => {
     const { run, store } = await setup();
     expect(await run.start()).toMatchObject({ status: 'done', done: 3, total: 3, pages: 2, failed: 0 });
     expect(Object.fromEntries(run.result().mapping)).toEqual({
@@ -29,6 +29,8 @@ describe('a run', () => {
     });
     expect(run.result().queries[1]).toEqual({ query: 'how to clean widgets', citations: 12, intent: ['Informational'], topic: ['Care', 'Widgets'], rate: 0.125 });
     expect(run.result().pages).toEqual([{ url: 'https://example.com/widgets/', citations: 45 }, { url: 'https://example.com/care/', citations: 15 }]);
+    expect(await store.get(KEY)).not.toBeNull();
+    await run.discard();
     expect(await store.get(KEY)).toBeNull();
   });
 
@@ -91,6 +93,39 @@ describe('a run', () => {
     expect((await store.get(KEY)).queries).toHaveLength(3);
   });
 
+  it('resumes a throttled list at the throttled page, not at the first', async () => {
+    let once = true;
+    const bing = fakeBing({
+      queries: many(450),
+      mapping: {},
+      intercept: c => {
+        if (c.url.endsWith('/searchqueries/stats') && c.body.Pagination.PageNum === 2 && once) {
+          once = false;
+          return reply(429);
+        }
+        return undefined;
+      },
+    });
+    const { run, snapshots } = await setup({ bing, pace: { concurrency: 1, gap: 0 } });
+    expect(await run.start()).toMatchObject({ status: 'done', total: 450, done: 450 });
+    const pageCalls = n => bing.calls.filter(c => c.url.endsWith('/searchqueries/stats') && c.body.Pagination.PageNum === n).length;
+    expect([pageCalls(1), pageCalls(2), pageCalls(3)]).toEqual([1, 2, 1]);
+    expect(snapshots.some(s => s.status === 'throttled' && s.total === 0)).toBe(true);
+  });
+
+  it('pauses after 12 throttled list attempts in a row even when the probes succeed', async () => {
+    const bing = fakeBing({
+      queries: many(450),
+      mapping: {},
+      intercept: c => (c.url.endsWith('/searchqueries/stats') && c.body.Pagination.PageNum === 2 ? reply(429) : undefined),
+    });
+    const { run, store } = await setup({ bing });
+    expect((await run.start()).status).toBe('paused');
+    expect(bing.calls.filter(c => c.body?.Pagination?.PageNum === 2)).toHaveLength(12);
+    expect(bing.calls.length).toBeLessThan(60);
+    expect(await store.get(KEY)).not.toBeNull();
+  });
+
   it('marks a query failed after three throttles in a row, and a new start retries only that one', async () => {
     let blocked = true;
     const bing = fakeBing({ intercept: c => (blocked && c.body?.Query === 'how to clean widgets' ? reply(429) : undefined) });
@@ -102,6 +137,7 @@ describe('a run', () => {
     const before = bing.mappingCalls().length;
     expect(await run.start()).toMatchObject({ status: 'done', done: 3, failed: 0 });
     expect(bing.mappingCalls().slice(before)).toEqual(['how to clean widgets']);
+    await run.discard();
     expect(await store.get(KEY)).toBeNull();
   });
 
@@ -136,6 +172,33 @@ describe('a run', () => {
     expect((await loadState(store, SITE, RANGE, now)).queries).toBeNull();
     await store.set(KEY, { ...saved, savedAt: now - 1000 });
     expect((await loadState(store, SITE, RANGE, now)).queries).toEqual([]);
+  });
+
+  it('deletes saved progress for other ranges once it is over a day old, and keeps fresh ones', async () => {
+    const store = memoryStore();
+    const now = fakeClock().now();
+    const entry = savedAt => ({ version: 1, site: SITE, range: RANGE, savedAt, queries: [], pages: [], mapping: [], failed: [] });
+    await store.set('bing-aip:old', entry(now - TTL - 1));
+    await store.set('bing-aip:fresh', entry(now - 1000));
+    await store.set('bing-aip:junk', { hello: 'world' });
+    await store.set('other:old', entry(now - TTL - 1));
+    await loadState(store, SITE, RANGE, now);
+    expect((await store.keys()).sort()).toEqual(['bing-aip:fresh', 'other:old']);
+  });
+
+  it('deletes the requested progress when it is stale, and starts afresh', async () => {
+    const store = memoryStore();
+    const now = fakeClock().now();
+    await store.set(KEY, { version: 1, site: SITE, range: RANGE, savedAt: now - TTL - 1, queries: [], pages: [], mapping: [], failed: [] });
+    expect((await loadState(store, SITE, RANGE, now)).queries).toBeNull();
+    expect(await store.get(KEY)).toBeNull();
+  });
+
+  it('loads even when the store cannot list or remove', async () => {
+    const store = { ...memoryStore(), async keys() { throw new Error('no'); }, async remove() { throw new Error('no'); } };
+    const now = fakeClock().now();
+    await store.set(KEY, { version: 1, site: SITE, range: RANGE, savedAt: now - TTL - 1, queries: [], pages: [], mapping: [], failed: [] });
+    expect((await loadState(store, SITE, RANGE, now)).queries).toBeNull();
   });
 
   it('ends with the session expired when Bing answers 401, keeping its progress', async () => {

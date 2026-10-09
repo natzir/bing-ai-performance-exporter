@@ -23,7 +23,7 @@ export function clockText(ms) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-export function createExporter({ doc, win, store, fetch: fetchFn, clock = realClock, logo, again, lang }) {
+export function createExporter({ doc, win, store, fetch: fetchFn, clock = realClock, logo, again, lang, files = exportFiles }) {
   const language = lang ?? win.navigator?.language ?? 'en';
   let panel = null;
   let run = null;
@@ -55,9 +55,12 @@ export function createExporter({ doc, win, store, fetch: fetchFn, clock = realCl
     }
     if (run?.running) {
       const asked = panel;
-      asked.askStop(stop => {
-        if (stop && panel === asked) close();
-      });
+      asked.askStop(
+        stop => {
+          if (stop && panel === asked) close();
+        },
+        { kept: !run.snapshot().unsaved },
+      );
       return;
     }
     close();
@@ -101,8 +104,19 @@ export function createExporter({ doc, win, store, fetch: fetchFn, clock = realCl
       if (live()) mine.message(`Your Bing session has expired. Reload the page and ${again}.`, 'error');
       return;
     }
-    const state = await loadState(store, site, range, clock.now());
-    if (!live()) return;
+    let current;
+    try {
+      const state = await loadState(store, site, range, clock.now());
+      if (live()) current = start(mine, site, range, state, token);
+    } catch (error) {
+      failed(mine, error);
+      return;
+    }
+    if (current) await go(mine, current, site, range);
+  }
+
+  function start(mine, site, range, state, token) {
+    const live = () => panel === mine;
     const current = createRun({
       post: client(fetchFn, token),
       site,
@@ -115,13 +129,27 @@ export function createExporter({ doc, win, store, fetch: fetchFn, clock = realCl
       },
     });
     run = current;
-    await go(mine, current, site, range);
+    return current;
+  }
+
+  // Anything unexpected ends in a sentence, never in a panel that says nothing.
+  function failed(mine, error) {
+    if (panel !== mine) return;
+    const detail = String(error?.message ?? error);
+    const kept = run ? ` ${run.snapshot().unsaved ? "Progress can't be saved in this browser." : 'Your progress is kept.'}` : '';
+    mine.clearQuestion();
+    mine.message(`Something went wrong: ${detail}.${kept}`, 'error');
+    mine.actions([]);
   }
 
   async function go(mine, current, site, range) {
-    mine.actions([{ label: 'Stop and download what I have', onClick: () => current.stop() }]);
-    const end = await current.start();
-    if (panel === mine) finish(mine, current, end, site, range);
+    try {
+      mine.actions([{ label: 'Stop and download what I have', onClick: () => current.stop() }]);
+      const end = await current.start();
+      if (panel === mine) await finish(mine, current, end, site, range);
+    } catch (error) {
+      failed(mine, error);
+    }
   }
 
   function show(mine, s) {
@@ -136,7 +164,8 @@ export function createExporter({ doc, win, store, fetch: fetchFn, clock = realCl
     if (text) mine.message(text, 'busy');
   }
 
-  function finish(mine, current, s, site, range) {
+  async function finish(mine, current, s, site, range) {
+    mine.clearQuestion();
     const result = current.result();
     const listed = Boolean(result.queries && result.pages);
     const kept = s.unsaved ? "Progress can't be saved in this browser." : 'Your progress is kept.';
@@ -171,22 +200,24 @@ export function createExporter({ doc, win, store, fetch: fetchFn, clock = realCl
       if (s.failed) items = [resume('Retry failed')];
     }
     if (listed && result.queries.length) items = [...items, ...downloads(result, site, range)];
+    // The files are built: a complete run with nothing failed has no use for its saved progress.
+    if (s.status === 'done' && listed && !s.failed) await current.discard();
     mine.message(text, tone);
     mine.actions(items);
   }
 
   function downloads(result, site, range) {
     revoke();
-    const files = exportFiles(result, site, range, language, new Date(clock.now()));
+    const built = files(result, site, range, language, new Date(clock.now()));
     const link = file => {
       const url = win.URL.createObjectURL(new Blob([file.data], { type: file.type }));
       urls.push(url);
       return { name: file.name, url };
     };
     return [
-      { label: 'Download CSV (ZIP)', primary: true, desc: 'The three CSVs below, in one file.', download: link(files.zip) },
-      { label: 'Download Excel', primary: true, desc: 'The same three tables, one sheet each.', download: link(files.xlsx) },
-      ...files.csvs.map(file => ({ label: file.label, desc: DESCRIPTIONS[file.label], download: link(file) })),
+      { label: 'Download CSV (ZIP)', primary: true, desc: 'The three CSVs below, in one file.', download: link(built.zip) },
+      { label: 'Download Excel', primary: true, desc: 'The same three tables, one sheet each.', download: link(built.xlsx) },
+      ...built.csvs.map(file => ({ label: file.label, desc: DESCRIPTIONS[file.label], download: link(file) })),
     ];
   }
 

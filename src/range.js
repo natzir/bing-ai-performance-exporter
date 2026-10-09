@@ -35,20 +35,18 @@ function day(year, month, date) {
   return value.getUTCMonth() === month && value.getUTCDate() === date ? isoDay(value) : null;
 }
 
-// A day as Bing may show it in English: "Feb 17, 2026", "February 17, 2026", "Sept. 3, 2026" or
-// "2/17/2026". Null for anything else.
+// A day as Bing may show it in English: "Feb 17, 2026", "February 17, 2026" or "Sept. 3, 2026". Numeric
+// dates are not read: 2/3/2026 is the 3rd of February or the 2nd of March depending on the locale. Null
+// for anything else.
 export function parseShownDate(text) {
   const s = text.trim();
-  let m = s.match(/^([A-Za-z]{3})[a-z]*\.? (\d{1,2}), (\d{4})$/);
-  if (m) {
-    const month = MONTHS.indexOf(m[1].toLowerCase());
-    return month < 0 ? null : day(Number(m[3]), month, Number(m[2]));
-  }
-  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  return m ? day(Number(m[3]), Number(m[1]) - 1, Number(m[2])) : null;
+  const m = s.match(/^([A-Za-z]{3})[a-z]*\.? (\d{1,2}), (\d{4})$/);
+  if (!m) return null;
+  const month = MONTHS.indexOf(m[1].toLowerCase());
+  return month < 0 ? null : day(Number(m[3]), month, Number(m[2]));
 }
 
-const DATE = String.raw`\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.? \d{1,2}, \d{4}|\b\d{1,2}\/\d{1,2}\/\d{4}`;
+const DATE = String.raw`\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.? \d{1,2}, \d{4}`;
 const PAIR = new RegExp(`(${DATE})\\s*[-–—]\\s*(${DATE})`);
 
 // The first "day – day" in a text, if both days are real and in order.

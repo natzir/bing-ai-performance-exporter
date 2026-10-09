@@ -24,7 +24,7 @@ Bing's mapping is a sample: `unmapped_citations` shows how much of each page's c
 ## Use
 
 1. Open AI Performance in Bing Webmaster Tools and pick a date range: 7 D, 30 D, 3 M, 6 M or Custom (with Compare, it exports the current period).
-2. Click the icon, or the bookmark. A panel shows the progress: seconds for a small site, up to an hour for one with thousands of queries.
+2. Click the icon, or the bookmark. A panel shows the progress: seconds for a small site, up to two hours for one with thousands of queries.
 3. Download the ZIP of CSVs and the Excel file.
 
 **When Bing throttles.** Bing limits how fast an account can ask. The exporter paces itself and pauses 45 seconds every 150 queries; when Bing says to slow down it waits (5 minutes, or as long as Bing asks), checks whether Bing is back and goes on. After an hour of throttling it stops with a Resume button.

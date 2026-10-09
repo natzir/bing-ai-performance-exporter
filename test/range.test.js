@@ -44,11 +44,11 @@ describe('parseShownDate', () => {
     expect(parseShownDate('Feb 17, 2026')).toBe('2026-02-17');
     expect(parseShownDate('February 17, 2026')).toBe('2026-02-17');
     expect(parseShownDate('Sept. 3, 2026')).toBe('2026-09-03');
-    expect(parseShownDate('2/17/2026')).toBe('2026-02-17');
   });
 
   it('refuses days that do not exist and words that are not months', () => {
     expect(parseShownDate('Feb 30, 2026')).toBeNull();
+    expect(parseShownDate('2/17/2026')).toBeNull();
     expect(parseShownDate('17/2/2026')).toBeNull();
     expect(parseShownDate('Foo 1, 2026')).toBeNull();
   });
@@ -57,7 +57,7 @@ describe('parseShownDate', () => {
 describe('shownRange', () => {
   it('finds the first "day – day" in a text', () => {
     expect(shownRange('Data for Feb 1, 2026 - Mar 3, 2026')).toEqual({ begin: '2026-02-01', end: '2026-03-03' });
-    expect(shownRange('2/1/2026 – 3/3/2026')).toEqual({ begin: '2026-02-01', end: '2026-03-03' });
+    expect(shownRange('2/1/2026 – 3/3/2026')).toBeNull();
   });
 
   it('gives nothing for a single day or a backwards pair', () => {

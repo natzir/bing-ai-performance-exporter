@@ -19,9 +19,18 @@ describe('getToken', () => {
     ];
     for (const bing of answers) await expect(getToken(bing.fetch)).rejects.toBeInstanceOf(SessionExpired);
   });
+
+  it('gives up on a token request that never answers', async () => {
+    const bing = fakeBing({ intercept: () => new Promise(() => {}) });
+    await expect(getToken(bing.fetch, { timeout: 5 })).rejects.toBeInstanceOf(SessionExpired);
+  });
 });
 
 describe('classify', () => {
+  it('reads a 404 NoDataFound as none even when the body also has throttle words', () => {
+    expect(classify(404, `{"ErrorCode":"NoDataFound","Message":"We're sorry"}`, null)).toEqual({ kind: 'none' });
+  });
+
   it('sorts every answer as the bookmarklet did', () => {
     expect(classify(200, '{"Queries":[]}', null)).toEqual({ kind: 'data', data: { Queries: [] } });
     expect(classify(404, '{"ErrorCode":"NoDataFound"}', null)).toEqual({ kind: 'none' });
@@ -120,8 +129,13 @@ describe('paginate', () => {
     const queries = Array.from({ length: 250 }, (_, i) => ({ GroundingQuery: `query ${i}`, Citations: 1 }));
     const throttled = fakeBing({ queries, intercept: c => (c.body?.Pagination.PageNum === 2 ? reply(429) : undefined) });
     expect(await paginate(client(throttled.fetch, 'tok'), 'searchqueries/stats', 'Queries', SITE, RANGE))
-      .toEqual({ kind: 'throttled', wait: WAIT.throttled });
+      .toMatchObject({ kind: 'throttled', wait: WAIT.throttled, page: 2 });
     const broken = fakeBing({ intercept: () => reply(400, 'Bad request') });
+    const first = await paginate(client(throttled.fetch, 'tok'), 'searchqueries/stats', 'Queries', SITE, RANGE);
+    expect(first.items).toHaveLength(200);
+    const again = fakeBing({ queries });
+    const rest = await paginate(client(again.fetch, 'tok'), 'searchqueries/stats', 'Queries', SITE, RANGE, '', { from: first.page, items: first.items });
+    expect([rest.kind, rest.items.length, again.calls.length]).toEqual(['data', 250, 1]);
     expect(await paginate(client(broken.fetch, 'tok'), 'pages/stats', 'Pages', SITE, RANGE)).toEqual({ kind: 'error', status: 400 });
   });
 });

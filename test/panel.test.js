@@ -110,6 +110,21 @@ describe('panel', () => {
     expect(onAnswer).toHaveBeenLastCalledWith(true);
   });
 
+  it('says progress can\'t be saved when it isn\'t kept, and focuses Keep going', () => {
+    const { panel, root } = make();
+    panel.askStop(vi.fn(), { kept: false });
+    expect(root.querySelector('.question .ask').textContent).toBe("Stop the export? Progress can't be saved in this browser.");
+    expect(root.activeElement.textContent).toBe('Keep going');
+    panel.askStop(vi.fn());
+    expect(root.querySelector('.question .ask').textContent).toBe('Stop the export? Your progress is kept.');
+    expect(root.activeElement.textContent).toBe('Keep going');
+  });
+
+  it('sets its host display inline, so the page\'s rules can\'t hide it', () => {
+    const { panel } = make();
+    expect(panel.host.style.display).toBe('block');
+  });
+
   it('leaves the page when removed', () => {
     const { panel } = make();
     panel.remove();

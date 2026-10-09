@@ -3,7 +3,7 @@ import { REPORT, TOGGLE, WELCOME_PAGE, iconClicked, installed, reloadThenToggle 
 
 // A fake of the chrome.tabs calls the worker makes. `refuse` is how many sendMessage calls fail first,
 // as they do on a tab without the content script. `silent` makes reload() fire no tab events.
-function fakeApi({ refuse = 0, silent = false } = {}) {
+function fakeApi({ refuse = 0, silent = false, reloadFails = false } = {}) {
   const calls = { created: [], sent: [], reloaded: [] };
   const listeners = new Set();
   let refusals = refuse;
@@ -27,6 +27,7 @@ function fakeApi({ refuse = 0, silent = false } = {}) {
       },
       async reload(tabId) {
         calls.reloaded.push(tabId);
+        if (reloadFails) throw new Error('No tab with id');
         if (silent) return;
         for (const listener of [...listeners]) listener(tabId, { status: 'loading' });
         for (const listener of [...listeners]) listener(99, { status: 'complete' });
@@ -91,6 +92,13 @@ describe('worker', () => {
     await reloadThenToggle(7, api, { tries: 3, sleep: noWait });
     expect(api.calls.sent).toEqual([]);
     expect(api.attempts).toBe(3);
+    expect(api.listeners.size).toBe(0);
+  });
+
+  it('stops when the tab can\'t be reloaded', async () => {
+    const api = fakeApi({ reloadFails: true });
+    await reloadThenToggle(7, api);
+    expect(api.calls.sent).toEqual([]);
     expect(api.listeners.size).toBe(0);
   });
 

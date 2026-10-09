@@ -13,7 +13,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-function setup({ bing = fakeBing(), tab = '30 D', href = REPORT_URL, store = memoryStore(), clock = fakeClock() } = {}) {
+function setup({ bing = fakeBing(), tab = '30 D', href = REPORT_URL, store = memoryStore(), clock = fakeClock(), files } = {}) {
   document.body.innerHTML = tab
     ? `<div role="tablist"><div role="tab" aria-selected="false">7 D</div><div role="tab" aria-selected="true">${tab}</div></div>`
     : '<main></main>';
@@ -29,7 +29,7 @@ function setup({ bing = fakeBing(), tab = '30 D', href = REPORT_URL, store = mem
       revokeObjectURL: () => {},
     },
   };
-  const exporter = createExporter({ doc: document, win, store, fetch: bing.fetch, clock, logo: '', again: 'click the icon again' });
+  const exporter = createExporter({ doc: document, win, store, fetch: bing.fetch, clock, logo: '', again: 'click the icon again', ...(files && { files }) });
   return { exporter, bing, store, blobs, clock };
 }
 
@@ -131,6 +131,80 @@ describe('exporter', () => {
     await exporter.settled();
     expect(status()).toBe(DONE);
     expect(bing.mappingCalls()).toEqual(['blue widgets price', 'how to clean widgets', 'widget history']);
+  });
+
+  it('asks the stop question without the promise of kept progress when it can\'t be saved', async () => {
+    const store = { ...memoryStore(), async set() { throw new DOMException('Quota exceeded', 'QuotaExceededError'); } };
+    let exporter;
+    let question = null;
+    const bing = fakeBing({
+      intercept: c => {
+        if (c.body?.Query !== 'how to clean widgets' || question !== null) return undefined;
+        exporter.toggle();
+        question = root().querySelector('.question .ask').textContent;
+        root().querySelectorAll('.question button')[1].click();
+        return undefined;
+      },
+    });
+    ({ exporter } = setup({ bing, store }));
+    exporter.toggle();
+    await exporter.settled();
+    expect(question).toBe("Stop the export? Progress can't be saved in this browser.");
+    expect(status()).toBe(DONE);
+  });
+
+  it('leaves no question on screen when the run finishes with one open', async () => {
+    let exporter;
+    let opened = false;
+    const bing = fakeBing({
+      intercept: c => {
+        if (c.body?.Query !== 'how to clean widgets' || opened) return undefined;
+        opened = true;
+        exporter.toggle();
+        return undefined;
+      },
+    });
+    ({ exporter } = setup({ bing }));
+    exporter.toggle();
+    await exporter.settled();
+    expect(opened).toBe(true);
+    expect(status()).toBe(DONE);
+    expect(root().querySelector('.question').children).toHaveLength(0);
+    expect(root().querySelector('.question').hidden).toBe(true);
+  });
+
+  it('forgets the saved progress once the files are built, and keeps it when some queries failed', async () => {
+    const key = stateKey(SITE, { begin: '2026-04-17', end: '2026-05-17' });
+    const done = setup();
+    done.exporter.toggle();
+    await done.exporter.settled();
+    expect(await done.store.get(key)).toBeNull();
+    const bing = fakeBing({ intercept: c => (c.body?.Query === 'how to clean widgets' ? reply(429) : undefined) });
+    const failed = setup({ bing });
+    failed.exporter.toggle();
+    await failed.exporter.settled();
+    expect(await failed.store.get(key)).not.toBeNull();
+  });
+
+  it('says what went wrong when building the files fails, and keeps the saved progress', async () => {
+    const key = stateKey(SITE, { begin: '2026-04-17', end: '2026-05-17' });
+    const { exporter, store } = setup({
+      files: () => {
+        throw new Error('boom');
+      },
+    });
+    exporter.toggle();
+    await exporter.settled();
+    expect(status()).toBe('Something went wrong: boom. Your progress is kept.');
+    expect(root().querySelector('.status').className).toBe('status error');
+    expect(await store.get(key)).not.toBeNull();
+  });
+
+  it('says what went wrong before a run exists, without a word about progress', async () => {
+    const { exporter } = setup({ store: { ...memoryStore(), get() { throw new Error('disk gone'); } } });
+    exporter.toggle();
+    await exporter.settled();
+    expect(status()).toBe('Something went wrong: disk gone.');
   });
 
   it('says where it resumes from', async () => {

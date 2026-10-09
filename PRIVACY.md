@@ -8,7 +8,7 @@ When you click its icon on Bing Webmaster Tools' AI Performance report, it asks 
 
 ## What it keeps
 
-While an export runs, its progress (the lists and the mapping fetched so far) is kept in `chrome.storage.local`, in this browser only, so a stop or a reload loses nothing. It is deleted when an export finishes with every query fetched, and ignored after 24 hours. The files are saved to your computer only when you click a download.
+While an export runs, its progress (the lists and the mapping fetched so far) is kept in `chrome.storage.local`, in this browser only, so a stop or a reload loses nothing. It is deleted when an export finishes with every query fetched, and anything older than 24 hours is deleted. The files are saved to your computer only when you click a download.
 
 ## What it sends
 

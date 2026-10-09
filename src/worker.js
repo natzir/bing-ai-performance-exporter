@@ -53,6 +53,12 @@ export function reloadThenToggle(tabId, api, { tries = 10, gap = 200, timeout = 
       resolve();
     }, timeout);
     api.tabs.onUpdated.addListener(listener);
-    api.tabs.reload(tabId);
+    // A tab that closed or can't be reloaded: nothing to wait for.
+    Promise.resolve()
+      .then(() => api.tabs.reload(tabId))
+      .catch(() => {
+        stop();
+        resolve();
+      });
   });
 }

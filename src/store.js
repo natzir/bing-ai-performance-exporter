@@ -1,5 +1,5 @@
 // Where an export keeps its progress: chrome.storage.local in the extension, localStorage in the
-// bookmarklet, memory when the page allows neither. All three are get/set/remove; `set` rejects when
+// bookmarklet, memory when the page allows neither. All three are get/set/remove/keys; `set` rejects when
 // the browser refuses (localStorage full), so the engine can say progress isn't being saved.
 export const chromeStore = area => ({
   async get(key) {
@@ -10,6 +10,9 @@ export const chromeStore = area => ({
   },
   async remove(key) {
     await area.remove(key);
+  },
+  async keys() {
+    return Object.keys(await area.get(null));
   },
 });
 
@@ -31,6 +34,13 @@ export const webStore = storage => ({
       // Nothing to remove, or storage is gone: either way there is nothing to keep.
     }
   },
+  async keys() {
+    try {
+      return Array.from({ length: storage.length }, (_, i) => storage.key(i)).filter(key => key !== null);
+    } catch {
+      return [];
+    }
+  },
 });
 
 export function memoryStore() {
@@ -44,6 +54,9 @@ export function memoryStore() {
     },
     async remove(key) {
       data.delete(key);
+    },
+    async keys() {
+      return [...data.keys()];
     },
   };
 }

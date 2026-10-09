@@ -81,6 +81,8 @@ export function createPanel(doc, { logo, onClose }) {
   };
 
   const host = el('div');
+  // Inline, so no rule of the page's own can hide or move it.
+  host.style.cssText = 'all: initial; display: block;';
   host.setAttribute('data-bing-aip', '');
   const root = host.attachShadow({ mode: 'open' });
 
@@ -201,7 +203,7 @@ export function createPanel(doc, { logo, onClose }) {
       question.hidden = false;
       choices.querySelector('button').focus();
     },
-    askStop(onAnswer) {
+    askStop(onAnswer, { kept = true } = {}) {
       clearQuestion();
       const row = el('div', 'row');
       row.append(
@@ -214,9 +216,10 @@ export function createPanel(doc, { logo, onClose }) {
           onAnswer(false);
         }),
       );
-      question.append(el('p', 'ask', 'Stop the export? Your progress is kept.'), row);
+      const note = kept ? 'Your progress is kept.' : "Progress can't be saved in this browser.";
+      question.append(el('p', 'ask', `Stop the export? ${note}`), row);
       question.hidden = false;
-      row.querySelector('button').focus();
+      row.querySelectorAll('button')[1].focus();
     },
     clearQuestion,
     remove() {

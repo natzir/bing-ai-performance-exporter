@@ -34,10 +34,29 @@ const toQuery = q => ({
 });
 const toPage = p => ({ url: p.PageUrl, citations: p.Citations ?? 0 });
 
-// The saved progress for this site and range, or a fresh start when there is none or it is over a day old.
+const PREFIX = 'bing-aip:';
+const expired = (saved, now) => saved?.version !== 1 || !(now - saved.savedAt < TTL);
+
+// The saved progress for this site and range, or a fresh start when there is none or it is over a day
+// old. Progress over a day old, for this range or any other, is deleted on the way; a failure there
+// never stops the load.
 export async function loadState(store, site, range, now) {
+  const own = stateKey(site, range);
+  try {
+    for (const key of await store.keys()) {
+      if (!key.startsWith(PREFIX) || key === own) continue;
+      try {
+        if (expired(await store.get(key), now)) await store.remove(key);
+      } catch {
+        // One unreadable entry doesn't stop the others.
+      }
+    }
+  } catch {
+    // No list of keys: the entries of other ranges stay for the next time.
+  }
   const saved = await store.get(stateKey(site, range)).catch(() => null);
-  if (saved?.version === 1 && now - saved.savedAt < TTL) return saved;
+  if (!expired(saved, now)) return saved;
+  if (saved) await store.remove(own).catch(() => {});
   return { version: 1, site, range: { begin: range.begin, end: range.end }, savedAt: now, queries: null, pages: null, mapping: [], failed: [] };
 }
 
@@ -133,12 +152,24 @@ export function createRun({ post, site, range, store, state, clock = realClock, 
     }
   }
 
+  // A throttled page is asked again, not the pages before it. After PROBE.max throttled attempts in a
+  // row, with no page gained between them, the run pauses for the person.
   async function list(endpoint, listKey) {
+    let from = 1;
+    let items = [];
+    let throttles = 0;
     for (;;) {
       if (!(await gate())) return null;
-      const r = await paginate(post, endpoint, listKey, site, range);
+      const r = await paginate(post, endpoint, listKey, site, range, '', { from, items });
       if (r.kind === 'data') return r.items;
       if (r.kind === 'throttled') {
+        if (r.page > from) throttles = 0;
+        ({ page: from, items } = r);
+        throttles += 1;
+        if (throttles >= PROBE.max) {
+          end({ status: 'paused' });
+          return null;
+        }
         throttle(r.wait);
         continue;
       }
@@ -215,8 +246,7 @@ export function createRun({ post, site, range, store, state, clock = realClock, 
       await pool(todo, pace ?? pacing(state.queries.length));
     }
     const complete = Boolean(state.queries && state.pages) && !stopRequested && !outcome;
-    if (complete && state.failed.length === 0) await store.remove(key).catch(() => {});
-    else await save();
+    await save();
     set(stopRequested ? 'stopped' : (outcome?.status ?? 'done'));
     return snapshot();
   }
@@ -237,6 +267,8 @@ export function createRun({ post, site, range, store, state, clock = realClock, 
     },
     finished: () => running ?? Promise.resolve(),
     snapshot,
+    // The files are built: the saved progress has done its job.
+    discard: () => store.remove(key).catch(() => {}),
     result: () => ({ queries: state.queries, pages: state.pages, mapping: new Map(mapped), failed: [...state.failed] }),
   };
 }
