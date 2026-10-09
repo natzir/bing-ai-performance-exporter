@@ -7,8 +7,8 @@ const manifest = read('../extension/manifest.json');
 const pkg = read('../package.json');
 
 describe('manifest', () => {
-  it('asks only for storage, and runs on Bing Webmaster Tools', () => {
-    expect(manifest.permissions).toEqual(['storage', 'unlimitedStorage']);
+  it('asks only for activeTab and storage, and runs on Bing Webmaster Tools', () => {
+    expect(manifest.permissions).toEqual(['activeTab', 'storage', 'unlimitedStorage']);
     expect(manifest.host_permissions).toBeUndefined();
     expect(manifest.content_scripts).toEqual([{ matches: ['https://www.bing.com/webmasters/*'], js: ['content.js'], run_at: 'document_idle' }]);
     expect(manifest.web_accessible_resources).toBeUndefined();
@@ -18,6 +18,7 @@ describe('manifest', () => {
     expect(manifest.name).toBe('Bing AI Performance Exporter by Natzir');
     expect(manifest.description).toBe("Export the grounding query ↔ page mapping from Bing Webmaster Tools' AI Performance report to CSV and Excel.");
     expect(manifest.description.length).toBeLessThanOrEqual(132);
+    expect(manifest.description).toHaveLength(108);
     expect(manifest.version).toBe('1.0.0');
     expect(pkg.version).toBe(manifest.version);
   });

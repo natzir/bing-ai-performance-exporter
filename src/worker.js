@@ -10,8 +10,9 @@ export async function installed(details, api) {
 }
 
 // The icon opens or closes the panel in a Bing Webmaster Tools tab. A Bing tab opened before the install
-// has no content script to answer: it is reloaded, and the panel opens once it has loaded. Anywhere else
-// (where the extension can't even read the tab's address) the icon opens AI Performance in a new tab.
+// has no content script to answer: it is reloaded, and the panel opens once it has loaded. The clicked
+// tab's address is readable thanks to activeTab. Without an address (or off Bing) the icon opens AI
+// Performance in a new tab.
 export async function iconClicked(tab, api) {
   if (tab?.id === undefined) return;
   try {
