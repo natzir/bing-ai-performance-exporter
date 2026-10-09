@@ -1,19 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import { REPORT, TOGGLE, WELCOME_PAGE, iconClicked, installed } from '../src/worker.js';
+import { REPORT, TOGGLE, WELCOME_PAGE, iconClicked, installed, reloadThenToggle } from '../src/worker.js';
 
 // A fake of the chrome.tabs calls the worker makes. `refuse` is how many sendMessage calls fail first,
-// as they do on a tab without the content script.
-function fakeApi({ refuse = 0 } = {}) {
+// as they do on a tab without the content script. `silent` makes reload() fire no tab events.
+function fakeApi({ refuse = 0, silent = false } = {}) {
   const calls = { created: [], sent: [], reloaded: [] };
   const listeners = new Set();
   let refusals = refuse;
+  let attempts = 0;
   return {
     calls,
+    get attempts() {
+      return attempts;
+    },
     tabs: {
       async create(props) {
         calls.created.push(props);
       },
       async sendMessage(tabId, message) {
+        attempts += 1;
         if (refusals > 0) {
           refusals -= 1;
           throw new Error('Could not establish connection. Receiving end does not exist.');
@@ -22,6 +27,7 @@ function fakeApi({ refuse = 0 } = {}) {
       },
       async reload(tabId) {
         calls.reloaded.push(tabId);
+        if (silent) return;
         for (const listener of [...listeners]) listener(tabId, { status: 'loading' });
         for (const listener of [...listeners]) listener(99, { status: 'complete' });
         for (const listener of [...listeners]) listener(tabId, { status: 'complete' });
@@ -34,6 +40,8 @@ function fakeApi({ refuse = 0 } = {}) {
     listeners,
   };
 }
+
+const noWait = async () => {};
 
 describe('worker', () => {
   it('opens the welcome page on first install only', async () => {
@@ -68,5 +76,28 @@ describe('worker', () => {
     const api = fakeApi();
     await iconClicked(undefined, api);
     expect(api.calls).toEqual({ created: [], sent: [], reloaded: [] });
+  });
+
+  it("keeps trying until the reloaded tab's script answers", async () => {
+    const api = fakeApi({ refuse: 2 });
+    await reloadThenToggle(7, api, { sleep: noWait });
+    expect(api.calls.sent).toEqual([[7, TOGGLE]]);
+    expect(api.attempts).toBe(3);
+    expect(api.listeners.size).toBe(0);
+  });
+
+  it('gives up after the last try', async () => {
+    const api = fakeApi({ refuse: 99 });
+    await reloadThenToggle(7, api, { tries: 3, sleep: noWait });
+    expect(api.calls.sent).toEqual([]);
+    expect(api.attempts).toBe(3);
+    expect(api.listeners.size).toBe(0);
+  });
+
+  it('stops waiting when the tab never finishes loading', async () => {
+    const api = fakeApi({ silent: true });
+    await reloadThenToggle(7, api, { timeout: 5 });
+    expect(api.calls.sent).toEqual([]);
+    expect(api.listeners.size).toBe(0);
   });
 });

@@ -22,13 +22,35 @@ export async function iconClicked(tab, api) {
   }
 }
 
-export function reloadThenToggle(tabId, api) {
+// Chrome doesn't order the content script's document_idle injection against the tab's 'complete', so a
+// TOGGLE sent right after 'complete' can still find no listener: it is retried `gap` ms apart, up to `tries`
+// attempts. If the tab never reports 'complete' within `timeout` ms, the wait ends without a toggle. Never throws.
+export function reloadThenToggle(tabId, api, { tries = 10, gap = 200, timeout = 30000, sleep = ms => new Promise(r => setTimeout(r, ms)) } = {}) {
   return new Promise(resolve => {
+    let timer;
+    const stop = () => {
+      clearTimeout(timer);
+      api.tabs.onUpdated.removeListener(listener);
+    };
+    const toggle = async () => {
+      for (let attempt = 1; attempt <= tries; attempt += 1) {
+        try {
+          await api.tabs.sendMessage(tabId, TOGGLE);
+          return;
+        } catch {
+          if (attempt < tries) await sleep(gap);
+        }
+      }
+    };
     const listener = (id, change) => {
       if (id !== tabId || change.status !== 'complete') return;
-      api.tabs.onUpdated.removeListener(listener);
-      api.tabs.sendMessage(tabId, TOGGLE).catch(() => {}).finally(resolve);
+      stop();
+      toggle().finally(resolve);
     };
+    timer = setTimeout(() => {
+      stop();
+      resolve();
+    }, timeout);
     api.tabs.onUpdated.addListener(listener);
     api.tabs.reload(tabId);
   });
