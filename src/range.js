@@ -81,6 +81,10 @@ export function shownRange(text) {
   return begin && end && begin <= end ? { begin, end } : null;
 }
 
+// Whether the report has drawn its range tabs yet (Bing draws them after its own requests, so a panel
+// opened on a page that is still loading waits for them).
+export const rangeTabsShown = doc => [...doc.querySelectorAll('[role="tab"]')].some(t => TABS.test(t.textContent.trim()));
+
 // Custom's two fields, as Bing renders them: read-only text labelled "Start date" and "End date" (the
 // first pair on the page belongs to Custom; the Compare dialog adds its own pairs after it).
 function customFields(doc) {

@@ -16,7 +16,8 @@ Nothing. No analytics, no tracking, and no servers other than Bing's, which the 
 
 ## Permissions
 
-- **activeTab**: when you click the icon, to read that tab's address, so a Bing Webmaster Tools tab opened before the install can be reloaded with the panel. It gives no access to any other tab.
+- **activeTab**: when you click the icon, to read that tab's address and act on that tab only. It gives no access to any other tab.
+- **scripting**: with activeTab, to put the exporter into a Bing Webmaster Tools tab that was open before the install, so the panel opens there without reloading the page.
 - **storage**: to keep an export's progress.
 - **unlimitedStorage**: a big site's progress can exceed the 10 MB Chrome gives by default.
 - **Access to www.bing.com/webmasters**: to show the panel on Bing Webmaster Tools and ask Bing's API from that page.

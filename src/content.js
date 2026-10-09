@@ -5,6 +5,10 @@ import { createExporter } from './exporter.js';
 import { chromeStore } from './store.js';
 import { TOGGLE } from './worker.js';
 
+// A panel left by a previous version of the extension (updated, or put in again by the icon, while this
+// page was open) no longer answers the icon: it goes.
+for (const stale of document.querySelectorAll('[data-bing-aip]')) stale.remove();
+
 const exporter = createExporter({
   doc: document,
   win: window,

@@ -4,7 +4,7 @@
 import { client, getToken } from './api.js';
 import { exportFiles, hostOf } from './files.js';
 import { createPanel } from './panel.js';
-import { presetRange, rangeLabel, readRange } from './range.js';
+import { presetRange, rangeLabel, rangeTabsShown, readRange } from './range.js';
 import { createRun, loadState, realClock } from './run.js';
 
 export const REPORT = 'https://www.bing.com/webmasters/aiperformance';
@@ -75,10 +75,21 @@ export function createExporter({ doc, win, store, fetch: fetchFn, clock = realCl
       mine.actions([{ label: 'Open AI Performance', primary: true, href: site ? `${REPORT}?siteUrl=${encodeURIComponent(site)}` : REPORT }]);
       return;
     }
+    work = choose(mine, site);
+  }
+
+  // The range on screen, once Bing has drawn its tabs (up to 5 s after the page loads); otherwise the
+  // question.
+  async function choose(mine, site) {
+    if (!rangeTabsShown(doc)) {
+      mine.message('Waiting for the report to load…', 'busy');
+      for (let i = 0; i < 20 && !rangeTabsShown(doc) && panel === mine; i += 1) await clock.sleep(250);
+      if (panel !== mine) return;
+    }
     const today = new Date(clock.now());
     const range = readRange(doc, today);
     if (range) {
-      work = begin(mine, site, range);
+      await begin(mine, site, range);
       return;
     }
     mine.message('Which dates should it export?', 'idle');

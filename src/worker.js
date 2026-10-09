@@ -10,16 +10,29 @@ export async function installed(details, api) {
 }
 
 // The icon opens or closes the panel in a Bing Webmaster Tools tab. A Bing tab opened before the install
-// has no content script to answer: it is reloaded, and the panel opens once it has loaded. The clicked
-// tab's address is readable thanks to activeTab. Without an address (or off Bing) the icon opens AI
-// Performance in a new tab.
+// has no content script to answer: the icon puts it in (activeTab + scripting, on the clicked tab only)
+// and opens the panel, as a bookmark would, with no reload; only if that fails is the tab reloaded. The
+// clicked tab's address is readable thanks to activeTab. Without an address (or off Bing) the icon opens
+// AI Performance in a new tab.
 export async function iconClicked(tab, api) {
   if (tab?.id === undefined) return;
   try {
     await api.tabs.sendMessage(tab.id, TOGGLE);
   } catch {
-    if (onBing(tab.url)) await reloadThenToggle(tab.id, api);
-    else await api.tabs.create({ url: REPORT });
+    if (!onBing(tab.url)) await api.tabs.create({ url: REPORT });
+    else if (!(await injectThenToggle(tab.id, api))) await reloadThenToggle(tab.id, api);
+  }
+}
+
+// The content script, put into a tab that was open before the install, then the panel opened. False
+// when either step fails.
+export async function injectThenToggle(tabId, api) {
+  try {
+    await api.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+    await api.tabs.sendMessage(tabId, TOGGLE);
+    return true;
+  } catch {
+    return false;
   }
 }
 

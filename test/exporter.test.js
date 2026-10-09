@@ -73,10 +73,26 @@ describe('exporter', () => {
   it('asks for the range when it can\'t read it', async () => {
     const { exporter } = setup({ tab: null });
     exporter.toggle();
+    await exporter.settled();
     expect(status()).toBe('Which dates should it export?');
     root().querySelector('.choices button').click();
     await exporter.settled();
     expect(title()).toBe('example.com · May 10 – May 16, 2026');
+    expect(status()).toBe(DONE);
+  });
+
+  it('waits for Bing to draw its range tabs before asking', async () => {
+    let sleeps = 0;
+    const tabs = '<div role="tablist"><div role="tab" aria-selected="false">7 D</div><div role="tab" aria-selected="true">30 D</div></div>';
+    const clock = fakeClock(undefined, () => {
+      sleeps += 1;
+      if (sleeps === 3) document.body.insertAdjacentHTML('afterbegin', tabs);
+    });
+    const { exporter } = setup({ tab: null, clock });
+    exporter.toggle();
+    expect(status()).toBe('Waiting for the report to load…');
+    await exporter.settled();
+    expect(title()).toBe('example.com · Apr 17 – May 16, 2026');
     expect(status()).toBe(DONE);
   });
 

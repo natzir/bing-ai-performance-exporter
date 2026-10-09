@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "Export the grounding query ↔ page mapping from Bing Webmaster Tools' AI Performance report to CSV and Excel.",
   "minimum_chrome_version": "120",
-  "permissions": ["activeTab", "storage", "unlimitedStorage"],
+  "permissions": ["activeTab", "scripting", "storage", "unlimitedStorage"],
   "background": { "service_worker": "background.js" },
   "content_scripts": [
     {

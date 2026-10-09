@@ -30,7 +30,8 @@ Made by Natzir Turrado (natzir.com). Source: github.com/natzir/bing-ai-performan
 
 **Permission justification:**
 
-- activeTab: When the icon is clicked, reads that tab's address, to reload a Bing Webmaster Tools tab opened before the install so the panel can appear, or to open AI Performance from any other page. No access to other tabs.
+- activeTab: When the icon is clicked, reads that tab's address to tell whether it is Bing Webmaster Tools (otherwise it opens AI Performance in a new tab). No access to other tabs.
+- scripting: Together with activeTab, puts the exporter into a Bing Webmaster Tools tab that was open before the install, so the panel opens there without reloading the page. Only on the clicked tab.
 - storage: Keeps an export's progress, so a stop, a reload or a closed tab loses nothing.
 - unlimitedStorage: The progress of a big site (thousands of queries, each with its cited pages) can exceed the default 10 MB.
 - Host permission (content script on https://www.bing.com/webmasters/*): Shows the exporter's panel on Bing Webmaster Tools and calls the AI Performance report's own API from that page, with the user's session.

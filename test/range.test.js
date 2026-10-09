@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { apiDateRange, parseShownDate, presetRange, rangeLabel, readRange, shownRange } from '../src/range.js';
+import { apiDateRange, parseShownDate, presetRange, rangeLabel, rangeTabsShown, readRange, shownRange } from '../src/range.js';
 
 // Today in the browser: 9 October 2026, mid-afternoon local time (the day Bing's own requests were read).
 const NOW = new Date(2026, 9, 9, 15, 0);
@@ -78,6 +78,15 @@ describe('shownRange', () => {
   it('gives nothing for a single day or a backwards pair', () => {
     expect(shownRange('Last updated Feb 1, 2026')).toBeNull();
     expect(shownRange('Mar 3, 2026 – Feb 1, 2026')).toBeNull();
+  });
+});
+
+describe('rangeTabsShown', () => {
+  it('tells whether the report has drawn its range tabs yet', () => {
+    document.body.innerHTML = '<main>Loading…</main>';
+    expect(rangeTabsShown(document)).toBe(false);
+    page('3 M');
+    expect(rangeTabsShown(document)).toBe(true);
   });
 });
 

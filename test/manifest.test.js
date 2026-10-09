@@ -7,8 +7,8 @@ const manifest = read('../extension/manifest.json');
 const pkg = read('../package.json');
 
 describe('manifest', () => {
-  it('asks only for activeTab and storage, and runs on Bing Webmaster Tools', () => {
-    expect(manifest.permissions).toEqual(['activeTab', 'storage', 'unlimitedStorage']);
+  it('asks only for activeTab, scripting and storage, and runs on Bing Webmaster Tools', () => {
+    expect(manifest.permissions).toEqual(['activeTab', 'scripting', 'storage', 'unlimitedStorage']);
     expect(manifest.host_permissions).toBeUndefined();
     expect(manifest.content_scripts).toEqual([{ matches: ['https://www.bing.com/webmasters/*'], js: ['content.js'], run_at: 'document_idle' }]);
     expect(manifest.web_accessible_resources).toBeUndefined();

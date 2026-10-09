@@ -3,8 +3,8 @@ import { REPORT, TOGGLE, WELCOME_PAGE, iconClicked, installed, reloadThenToggle 
 
 // A fake of the chrome.tabs calls the worker makes. `refuse` is how many sendMessage calls fail first,
 // as they do on a tab without the content script. `silent` makes reload() fire no tab events.
-function fakeApi({ refuse = 0, silent = false, reloadFails = false } = {}) {
-  const calls = { created: [], sent: [], reloaded: [] };
+function fakeApi({ refuse = 0, silent = false, reloadFails = false, injectFails = false, scripting = true } = {}) {
+  const calls = { created: [], sent: [], reloaded: [], injected: [] };
   const listeners = new Set();
   let refusals = refuse;
   let attempts = 0;
@@ -38,6 +38,14 @@ function fakeApi({ refuse = 0, silent = false, reloadFails = false } = {}) {
         removeListener: listener => listeners.delete(listener),
       },
     },
+    ...(scripting && {
+      scripting: {
+        async executeScript(injection) {
+          calls.injected.push(injection);
+          if (injectFails) throw new Error('Cannot access contents of the page');
+        },
+      },
+    }),
     listeners,
   };
 }
@@ -58,8 +66,16 @@ describe('worker', () => {
     expect(api.calls.sent).toEqual([[7, TOGGLE]]);
   });
 
-  it('reloads a Bing tab opened before the install, then opens the panel', async () => {
+  it('puts the script into a Bing tab opened before the install and opens the panel, without reloading it', async () => {
     const api = fakeApi({ refuse: 1 });
+    await iconClicked({ id: 7, url: 'https://www.bing.com/webmasters/aiperformance?siteUrl=https://example.com/' }, api);
+    expect(api.calls.injected).toEqual([{ target: { tabId: 7 }, files: ['content.js'] }]);
+    expect(api.calls.sent).toEqual([[7, TOGGLE]]);
+    expect(api.calls.reloaded).toEqual([]);
+  });
+
+  it('reloads the tab when the script can\'t be put in it, then opens the panel', async () => {
+    const api = fakeApi({ refuse: 1, injectFails: true });
     await iconClicked({ id: 7, url: 'https://www.bing.com/webmasters/aiperformance?siteUrl=https://example.com/' }, api);
     expect(api.calls.reloaded).toEqual([7]);
     expect(api.calls.sent).toEqual([[7, TOGGLE]]);
@@ -76,7 +92,7 @@ describe('worker', () => {
   it('does nothing for a click without a tab', async () => {
     const api = fakeApi();
     await iconClicked(undefined, api);
-    expect(api.calls).toEqual({ created: [], sent: [], reloaded: [] });
+    expect(api.calls).toEqual({ created: [], sent: [], reloaded: [], injected: [] });
   });
 
   it("keeps trying until the reloaded tab's script answers", async () => {
