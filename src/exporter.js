@@ -4,16 +4,13 @@
 import { client, getToken } from './api.js';
 import { exportFiles, hostOf } from './files.js';
 import { createPanel } from './panel.js';
-import { lastDays, rangeLabel, readRange } from './range.js';
+import { presetRange, rangeLabel, readRange } from './range.js';
 import { createRun, loadState, realClock } from './run.js';
 
 export const REPORT = 'https://www.bing.com/webmasters/aiperformance';
 
-const DESCRIPTIONS = {
-  'mapping.csv': 'The full query ↔ page mapping. Each row: one query (with intent and topic), one page it cited, and the citations.',
-  'queries-summary.csv': 'One row per query: intent, topic, citation share, total citations and how many pages Bing maps it to.',
-  'pages-summary.csv': "One row per page: total citations vs mapped citations. The unmapped column shows Bing's sampling gap.",
-};
+// The range question's presets, as the report's own tabs.
+const PRESET_OF = { 7: '7 D', 30: '30 D', 90: '3 M', 180: '6 M' };
 
 const count = n => n.toLocaleString('en-US');
 const progress = s => `${count(s.done)}/${count(s.total)}${s.failed ? ` · ${count(s.failed)} failed` : ''}`;
@@ -86,14 +83,14 @@ export function createExporter({ doc, win, store, fetch: fetchFn, clock = realCl
     }
     mine.message('Which dates should it export?', 'idle');
     mine.askRange(choice => {
-      const chosen = choice.days ? lastDays(choice.days, today) : { begin: choice.begin, end: choice.end };
-      work = begin(mine, site, { ...chosen, compare: false });
+      const chosen = choice.days ? presetRange(PRESET_OF[choice.days], today) : { begin: choice.begin, end: choice.end };
+      work = begin(mine, site, chosen);
     });
   }
 
   async function begin(mine, site, range) {
     const live = () => panel === mine;
-    mine.title(`${hostOf(site)} · ${rangeLabel(range)}${range.compare ? ' · current period' : ''}`);
+    mine.title(`${hostOf(site)} · ${rangeLabel(range)}`);
     mine.message('Starting…', 'busy');
     mine.actions([]);
     await ending;
@@ -215,9 +212,8 @@ export function createExporter({ doc, win, store, fetch: fetchFn, clock = realCl
       return { name: file.name, url };
     };
     return [
-      { label: 'Download CSV (ZIP)', primary: true, desc: 'The three CSVs below, in one file.', download: link(built.zip) },
+      { label: 'Download CSV (ZIP)', primary: true, desc: 'mapping, queries-summary and pages-summary, in one file.', download: link(built.zip) },
       { label: 'Download Excel', primary: true, desc: 'The same three tables, one sheet each.', download: link(built.xlsx) },
-      ...built.csvs.map(file => ({ label: file.label, desc: DESCRIPTIONS[file.label], download: link(file) })),
     ];
   }
 

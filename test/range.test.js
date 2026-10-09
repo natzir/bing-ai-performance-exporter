@@ -1,7 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { apiDateRange, lastDays, parseShownDate, rangeLabel, readRange, shownRange } from '../src/range.js';
+import { apiDateRange, parseShownDate, presetRange, rangeLabel, readRange, shownRange } from '../src/range.js';
 
-const NOW = new Date('2026-05-17T15:00:00Z');
+// Today in the browser: 9 October 2026, mid-afternoon local time (the day Bing's own requests were read).
+const NOW = new Date(2026, 9, 9, 15, 0);
 
 // The report's range tabs, one of them selected, and whatever else the page shows after them.
 const page = (selected, extra = '') => {
@@ -14,12 +15,19 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('lastDays', () => {
-  it('ends today at 00:00 UTC and goes back the given days', () => {
-    expect(lastDays(7, NOW)).toEqual({ begin: '2026-05-10', end: '2026-05-17' });
-    expect(lastDays(30, NOW)).toEqual({ begin: '2026-04-17', end: '2026-05-17' });
-    expect(lastDays(90, NOW)).toEqual({ begin: '2026-02-16', end: '2026-05-17' });
-    expect(lastDays(180, NOW)).toEqual({ begin: '2025-11-18', end: '2026-05-17' });
+describe('presetRange', () => {
+  it("ends yesterday and goes back as Bing's own report does: days for 7 D and 30 D, calendar months for 3 M and 6 M", () => {
+    // What Bing's AI Performance page sent on 9 October 2026 for each tab.
+    expect(presetRange('7 D', NOW)).toEqual({ begin: '2026-10-02', end: '2026-10-08' });
+    expect(presetRange('30 D', NOW)).toEqual({ begin: '2026-09-09', end: '2026-10-08' });
+    expect(presetRange('3 M', NOW)).toEqual({ begin: '2026-07-09', end: '2026-10-08' });
+    expect(presetRange('6 M', NOW)).toEqual({ begin: '2026-04-09', end: '2026-10-08' });
+  });
+
+  it('keeps months whole at the end of a month and across a year', () => {
+    expect(presetRange('3 M', new Date(2026, 4, 31, 15, 0))).toEqual({ begin: '2026-02-28', end: '2026-05-30' });
+    expect(presetRange('6 M', new Date(2026, 1, 10, 15, 0))).toEqual({ begin: '2025-08-10', end: '2026-02-09' });
+    expect(presetRange('7 D', new Date(2026, 0, 3, 15, 0))).toEqual({ begin: '2025-12-27', end: '2026-01-02' });
   });
 });
 
@@ -46,6 +54,13 @@ describe('parseShownDate', () => {
     expect(parseShownDate('Sept. 3, 2026')).toBe('2026-09-03');
   });
 
+  it('reads the day-first dates of the Custom fields', () => {
+    expect(parseShownDate('09 Jul 2026')).toBe('2026-07-09');
+    expect(parseShownDate('09 Sept 2026')).toBe('2026-09-09');
+    expect(parseShownDate('8 October 2026')).toBe('2026-10-08');
+    expect(parseShownDate('31 Sept 2026')).toBeNull();
+  });
+
   it('refuses days that do not exist and words that are not months', () => {
     expect(parseShownDate('Feb 30, 2026')).toBeNull();
     expect(parseShownDate('2/17/2026')).toBeNull();
@@ -67,25 +82,32 @@ describe('shownRange', () => {
 });
 
 describe('readRange', () => {
-  it('turns each preset tab into its days', () => {
+  it('turns each preset tab into the days Bing uses', () => {
     page('7 D');
-    expect(readRange(document, NOW)).toEqual({ begin: '2026-05-10', end: '2026-05-17', compare: false });
+    expect(readRange(document, NOW)).toEqual({ begin: '2026-10-02', end: '2026-10-08' });
     page('30 D');
-    expect(readRange(document, NOW)).toEqual({ begin: '2026-04-17', end: '2026-05-17', compare: false });
+    expect(readRange(document, NOW)).toEqual({ begin: '2026-09-09', end: '2026-10-08' });
     page('3 M');
-    expect(readRange(document, NOW)).toEqual({ begin: '2026-02-16', end: '2026-05-17', compare: false });
+    expect(readRange(document, NOW)).toEqual({ begin: '2026-07-09', end: '2026-10-08' });
     page('6 M');
-    expect(readRange(document, NOW)).toEqual({ begin: '2025-11-18', end: '2026-05-17', compare: false });
+    expect(readRange(document, NOW)).toEqual({ begin: '2026-04-09', end: '2026-10-08' });
   });
 
-  it('reads the dates shown for Custom', () => {
+  it('reads Custom from its Start date and End date fields', () => {
+    // As Bing renders them: read-only text fields labelled for assistive tech.
+    const field = (label, text) => `<div aria-label="${label}"><div class="ms-TextField-field">${text}</div></div>`;
+    page('Custom', `${field('Start date', '09 Jul 2026')}\n${field('End date', '08 Oct 2026')}\n${field('Start date', '09 Sept 2026')}\n${field('End date', '08 Oct 2026')}`);
+    expect(readRange(document, NOW)).toEqual({ begin: '2026-07-09', end: '2026-10-08' });
+  });
+
+  it('falls back to a "day – day" in the page for Custom', () => {
     page('Custom', '<span>Feb 1, 2026 - Mar 3, 2026</span>');
-    expect(readRange(document, NOW)).toEqual({ begin: '2026-02-01', end: '2026-03-03', compare: false });
+    expect(readRange(document, NOW)).toEqual({ begin: '2026-02-01', end: '2026-03-03' });
   });
 
-  it('takes the current period of Compare, the first pair shown', () => {
-    page('Compare', '<span>Apr 1, 2026 – Apr 30, 2026</span>\n<span>Mar 1, 2026 – Mar 31, 2026</span>');
-    expect(readRange(document, NOW)).toEqual({ begin: '2026-04-01', end: '2026-04-30', compare: true });
+  it("asks for Compare, whose current period the page doesn't show once applied", () => {
+    page('Compare', '<span>Apr 1, 2026 – Apr 30, 2026</span>');
+    expect(readRange(document, NOW)).toBeNull();
   });
 
   it('gives nothing when it cannot tell, so the panel asks', () => {

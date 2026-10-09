@@ -7,7 +7,7 @@ import { fakeClock } from './helpers/clock.js';
 
 const REPORT_URL = `https://www.bing.com/webmasters/aiperformance?siteUrl=${encodeURIComponent(SITE)}`;
 const DONE = '3 queries · 2 pages mapped. Download below.';
-const FILES = ['Download CSV (ZIP)', 'Download Excel', 'mapping.csv', 'queries-summary.csv', 'pages-summary.csv'];
+const FILES = ['Download CSV (ZIP)', 'Download Excel'];
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -51,18 +51,14 @@ describe('exporter', () => {
     const { exporter, blobs } = setup();
     exporter.toggle();
     await exporter.settled();
-    expect(title()).toBe('example.com · Apr 17 – May 17, 2026');
+    expect(title()).toBe('example.com · Apr 17 – May 16, 2026');
     expect(status()).toBe(DONE);
     expect(labels()).toEqual(FILES);
-    expect(action('Download CSV (ZIP)').getAttribute('download')).toBe('bing-aip_example-com_2026-04-17_2026-05-17.zip');
-    expect(action('Download Excel').getAttribute('download')).toBe('bing-aip_example-com_2026-04-17_2026-05-17.xlsx');
-    expect(action('mapping.csv').getAttribute('download')).toBe('bing-aip_example-com_2026-04-17_2026-05-17_mapping.csv');
+    expect(action('Download CSV (ZIP)').getAttribute('download')).toBe('bing-aip_example-com_2026-04-17_2026-05-16.zip');
+    expect(action('Download Excel').getAttribute('download')).toBe('bing-aip_example-com_2026-04-17_2026-05-16.xlsx');
     expect(blobs.map(b => b.type)).toEqual([
       'application/zip',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'text/csv;charset=utf-8',
-      'text/csv;charset=utf-8',
-      'text/csv;charset=utf-8',
     ]);
   });
 
@@ -80,7 +76,7 @@ describe('exporter', () => {
     expect(status()).toBe('Which dates should it export?');
     root().querySelector('.choices button').click();
     await exporter.settled();
-    expect(title()).toBe('example.com · May 10 – May 17, 2026');
+    expect(title()).toBe('example.com · May 10 – May 16, 2026');
     expect(status()).toBe(DONE);
   });
 
@@ -174,7 +170,7 @@ describe('exporter', () => {
   });
 
   it('forgets the saved progress once the files are built, and keeps it when some queries failed', async () => {
-    const key = stateKey(SITE, { begin: '2026-04-17', end: '2026-05-17' });
+    const key = stateKey(SITE, { begin: '2026-04-17', end: '2026-05-16' });
     const done = setup();
     done.exporter.toggle();
     await done.exporter.settled();
@@ -187,7 +183,7 @@ describe('exporter', () => {
   });
 
   it('says what went wrong when building the files fails, and keeps the saved progress', async () => {
-    const key = stateKey(SITE, { begin: '2026-04-17', end: '2026-05-17' });
+    const key = stateKey(SITE, { begin: '2026-04-17', end: '2026-05-16' });
     const { exporter, store } = setup({
       files: () => {
         throw new Error('boom');
@@ -210,10 +206,10 @@ describe('exporter', () => {
   it('says where it resumes from', async () => {
     const store = memoryStore();
     const clock = fakeClock();
-    await store.set(stateKey(SITE, { begin: '2026-04-17', end: '2026-05-17' }), {
+    await store.set(stateKey(SITE, { begin: '2026-04-17', end: '2026-05-16' }), {
       version: 1,
       site: SITE,
-      range: { begin: '2026-04-17', end: '2026-05-17' },
+      range: { begin: '2026-04-17', end: '2026-05-16' },
       savedAt: clock.now(),
       queries: [
         { query: 'blue widgets price', citations: 40, intent: ['Commercial'], topic: ['Widgets'], rate: 0.7 },
