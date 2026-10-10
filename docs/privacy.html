@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bing AI Performance Exporter by Natzir · Privacy policy</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 680px; margin: 48px auto; padding: 0 16px; }
+  h1 { font-size: 26px; line-height: 1.25; }
+  h2 { font-size: 18px; margin-top: 32px; }
+  code { font-size: 14px; padding: 1px 4px; border-radius: 3px; background: rgba(127, 127, 127, .15); }
+</style>
+</head>
+<body>
+<h1>Bing AI Performance Exporter by Natzir · Privacy policy</h1>
+<p>Last updated: 9 October 2026</p>
+<h2>What it reads</h2>
+<p>When you click its icon on Bing Webmaster Tools' AI Performance report, it asks Bing's own API, from that page and with your Bing session, for the report's grounding queries, its cited pages and the pages each query cited. It reads nothing on other sites, and nothing until you click.</p>
+<h2>What it keeps</h2>
+<p>While an export runs, its progress (the lists and the mapping fetched so far) is kept in <code>chrome.storage.local</code>, in this browser only, so a stop or a reload loses nothing. It is deleted when an export finishes with every query fetched, and anything older than 24 hours is deleted. The files are saved to your computer only when you click a download.</p>
+<h2>What it sends</h2>
+<p>Nothing. No analytics, no tracking, and no servers other than Bing's, which the report itself uses.</p>
+<h2>Permissions</h2>
+<ul>
+  <li><strong>activeTab</strong>: when you click the icon, to read that tab's address and act on that tab only. It gives no access to any other tab.</li>
+  <li><strong>scripting</strong>: with activeTab, to put the exporter into a Bing Webmaster Tools tab that was open before the install, so the panel opens there without reloading the page.</li>
+  <li><strong>storage</strong>: to keep an export's progress.</li>
+  <li><strong>unlimitedStorage</strong>: a big site's progress can exceed the 10 MB Chrome gives by default.</li>
+  <li><strong>Access to www.bing.com/webmasters</strong>: to show the panel on Bing Webmaster Tools and ask Bing's API from that page.</li>
+</ul>
+<h2>Contact</h2>
+<p>Natzir Turrado · <a href="https://natzir.com">https://natzir.com</a></p>
+</body>
+</html>

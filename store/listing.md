@@ -40,6 +40,6 @@ Made by Natzir Turrado (natzir.com). Source: github.com/natzir/bing-ai-performan
 
 **Data usage:** Collects no user data; tick none of the data types. Certify that data is not sold, not used for purposes unrelated to the single purpose, and not used for creditworthiness.
 
-**Privacy policy URL:** https://github.com/natzir/bing-ai-performance-exporter/blob/main/PRIVACY.md
+**Privacy policy URL:** https://natzir.github.io/bing-ai-performance-exporter/privacy.html
 
 **Official URL:** natzir.com · **Homepage:** https://github.com/natzir/bing-ai-performance-exporter · **Support:** https://github.com/natzir/bing-ai-performance-exporter/issues
