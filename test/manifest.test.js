@@ -16,9 +16,9 @@ describe('manifest', () => {
 
   it('has the store name, the description and the package\'s version', () => {
     expect(manifest.name).toBe('Bing AI Performance Exporter by Natzir');
-    expect(manifest.description).toBe("Export the grounding query ↔ page mapping from Bing Webmaster Tools' AI Performance report to CSV and Excel.");
+    expect(manifest.description).toBe("In one click, every AI query that cited each of your pages, from Bing Webmaster Tools' AI Performance, in CSV and Excel.");
     expect(manifest.description.length).toBeLessThanOrEqual(132);
-    expect(manifest.description).toHaveLength(108);
+    expect(manifest.description).toHaveLength(120);
     expect(manifest.version).toBe('1.0.0');
     expect(pkg.version).toBe(manifest.version);
   });

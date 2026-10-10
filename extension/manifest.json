@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Bing AI Performance Exporter by Natzir",
   "version": "1.0.0",
-  "description": "Export the grounding query ↔ page mapping from Bing Webmaster Tools' AI Performance report to CSV and Excel.",
+  "description": "In one click, every AI query that cited each of your pages, from Bing Webmaster Tools' AI Performance, in CSV and Excel.",
   "minimum_chrome_version": "120",
   "permissions": ["activeTab", "scripting", "storage", "unlimitedStorage"],
   "background": { "service_worker": "background.js" },

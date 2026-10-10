@@ -4,11 +4,11 @@
 
 **Summary** (132 characters max). The dashboard takes it from the package (the manifest's `description`), so it must stay exactly this:
 
-> Export the grounding query ↔ page mapping from Bing Webmaster Tools' AI Performance report to CSV and Excel.
+> In one click, every AI query that cited each of your pages, from Bing Webmaster Tools' AI Performance, in CSV and Excel.
 
 **Description:**
 
-Bing Webmaster Tools' AI Performance report shows which grounding queries lead AI answers to cite your pages. Its export leaves out which query cited which page. This extension exports that mapping in full.
+In one click, get every AI query that cited each of your pages. Bing Webmaster Tools' AI Performance report shows which grounding queries lead AI answers to cite your site, but its export leaves out which query cited which page: this extension exports that mapping in full.
 
 Open AI Performance, pick a date range and click the icon. You get:
 • mapping.csv: one row per query and page it cited, with the query's intent, topic and citation share.
